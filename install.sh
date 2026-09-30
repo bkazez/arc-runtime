@@ -1,7 +1,8 @@
 #!/usr/bin/env bash
 # Install what arc needs on Linux, and arc itself.
 #   install.sh runtime   ffmpeg, lame, python, torch (CPU), demucs and the htdemucs weights
-#   install.sh arc       the latest published arc build, sha256-checked
+#   install.sh arc [POINTER]  the latest published arc build, sha256-checked;
+#                        POINTER is a copy of latest-linux-x86_64.txt to install instead
 #   install.sh all       both: a Claude session in the cloud, a CI job
 # The runtime changes rarely and is ~1 GB; arc changes nightly and is ~10 MB,
 # which is why they are separate steps (and separate image layers).
@@ -39,15 +40,19 @@ runtime() {
 
 arc() {
     local build commit date file sum
-    read -r build commit date file sum < <(curl -fsSL "$BASE/latest-linux-x86_64.txt")
+    if [[ -n "${1:-}" ]]; then
+        read -r build commit date file sum < "$1"
+    else
+        read -r build commit date file sum < <(curl -fsSL "$BASE/latest-linux-x86_64.txt")
+    fi
     curl -fsSL -o /tmp/arc.tar.gz "$BASE/$file"
     echo "$sum  /tmp/arc.tar.gz" | sha256sum -c - >/dev/null
     $SUDO mkdir -p "$ARC_HOME/lib"
-    $SUDO tar xzf /tmp/arc.tar.gz -C "$ARC_HOME"
+    $SUDO tar xzf /tmp/arc.tar.gz -C "$ARC_HOME" --warning=no-unknown-keyword
     rm /tmp/arc.tar.gz
     # The binary asks for liblame.so, which no distribution names that way
     # (bkazez/arc#852); Debian's libmp3lame is the same library.
-    $SUDO ln -sf "$(ldconfig -p | awk '/libmp3lame.so.0 /{print $NF; exit}')" "$ARC_HOME/lib/liblame.so"
+    $SUDO ln -sf "$(/sbin/ldconfig -p | awk '/libmp3lame.so.0 /{print $NF; exit}')" "$ARC_HOME/lib/liblame.so"
     $SUDO ln -sf "$ARC_HOME/arc" /usr/local/bin/arc
     echo "arc: build $build ($commit, $date)"
 }
@@ -63,7 +68,7 @@ ENV
 
 case "${1:-all}" in
     runtime) runtime ;;
-    arc) arc ;;
+    arc) arc "${2:-}" ;;
     all) runtime; arc; env_lines | $SUDO tee /etc/profile.d/arc.sh >/dev/null
          echo "arc-runtime: environment in /etc/profile.d/arc.sh" ;;
     env) env_lines ;;

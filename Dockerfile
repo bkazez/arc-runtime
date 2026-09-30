@@ -5,7 +5,7 @@
 #
 #   FROM ghcr.io/bkazez/arc-runtime:latest
 #   ADD https://www.impulsearc.com/arc-cli/latest-linux-x86_64.txt /opt/arc/build.txt
-#   RUN /usr/local/share/arc-runtime/install.sh arc
+#   RUN /usr/local/share/arc-runtime/install.sh arc /opt/arc/build.txt
 FROM debian:trixie-slim
 COPY install.sh /usr/local/share/arc-runtime/install.sh
 RUN /usr/local/share/arc-runtime/install.sh runtime && rm -rf /var/lib/apt/lists/*

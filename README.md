@@ -12,7 +12,7 @@ audio):
 FROM ghcr.io/bkazez/arc-runtime:latest
 # Re-fetched on every build; the layer below is rebuilt only when a new arc is published.
 ADD https://www.impulsearc.com/arc-cli/latest-linux-x86_64.txt /opt/arc/build.txt
-RUN /usr/local/share/arc-runtime/install.sh arc
+RUN /usr/local/share/arc-runtime/install.sh arc /opt/arc/build.txt
 ```
 
 On a Linux machine or a Claude Code cloud environment's setup script:
