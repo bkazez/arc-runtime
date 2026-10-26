@@ -9,11 +9,16 @@ In a Dockerfile (this is how [continuo.fm](https://continuo.fm) runs Improve
 audio):
 
 ```dockerfile
+# syntax=docker/dockerfile:1
 FROM ghcr.io/bkazez/arc-runtime:latest
 # Re-fetched on every build; the layer below is rebuilt only when a new arc is published.
-ADD https://www.impulsearc.com/arc-cli/latest-linux-x86_64.txt /opt/arc/build.txt
+# arc names Docker's amd64 x86_64; arm64 is arm64.
+ARG TARGETARCH
+ADD https://www.impulsearc.com/arc-cli/latest-linux-${TARGETARCH/amd64/x86_64}.txt /opt/arc/build.txt
 RUN /usr/local/share/arc-runtime/install.sh arc /opt/arc/build.txt
 ```
+
+The image is published for linux/amd64 and linux/arm64 under the same tag.
 
 On a Linux machine or a Claude Code cloud environment's setup script:
 

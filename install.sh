@@ -2,7 +2,7 @@
 # Install what arc needs on Linux, and arc itself.
 #   install.sh runtime   ffmpeg, lame, python, torch (CPU), demucs and the htdemucs weights
 #   install.sh arc [POINTER]  the latest published arc build, sha256-checked;
-#                        POINTER is a copy of latest-linux-x86_64.txt to install instead
+#                        POINTER is a copy of latest-linux-<arch>.txt to install instead
 #   install.sh all       both: a Claude session in the cloud, a CI job
 # The runtime changes rarely and is ~1 GB; arc changes nightly and is ~10 MB,
 # which is why they are separate steps (and separate image layers).
@@ -11,12 +11,22 @@ set -euo pipefail
 PREFIX="${ARC_RUNTIME_PREFIX:-/opt/arc-runtime}"   # venv, torch and HF caches
 ARC_HOME="${ARC_HOME:-/opt/arc}"                   # arc, arc-plughost, arc-separate
 BASE="https://www.impulsearc.com/arc-cli"
+case "$(uname -m)" in
+    x86_64) ASSET=linux-x86_64 ;;
+    aarch64) ASSET=linux-arm64 ;;
+    *) echo "arc-runtime: there is no arc build for $(uname -m)" >&2; exit 1 ;;
+esac
 
 # The separator as it runs on the Macs (~/.arc/separator/venv), torch from the
 # CPU index: the CUDA wheels are 2.5 GB and nothing here has a GPU.
 TORCH="torch==2.13.0"
 TORCHAUDIO="torchaudio==2.11.0"
-PACKAGES=(demucs==4.1.0 soundfile==0.14.0 numpy scipy)
+# demucs without its sphn, which has no aarch64 wheel and is imported only by
+# demucs.api, which arc-separate does not use; the rest of what demucs needs
+# is named here.
+DEMUCS="demucs==4.1.0"
+PACKAGES=(soundfile==0.14.0 numpy scipy einops huggingface-hub "julius>=0.2.3" "lameenc>=1.2"
+          pyyaml safetensors tqdm)
 MODEL=htdemucs
 
 SUDO=""
@@ -31,6 +41,7 @@ runtime() {
     python3 -m venv "$PREFIX/venv"
     "$PREFIX/venv/bin/pip" install -q --no-cache-dir --index-url https://download.pytorch.org/whl/cpu "$TORCH" "$TORCHAUDIO"
     "$PREFIX/venv/bin/pip" install -q --no-cache-dir "${PACKAGES[@]}"
+    "$PREFIX/venv/bin/pip" install -q --no-cache-dir --no-deps "$DEMUCS"
     # The weights, now: a separation should not wait on a download, or fail
     # with no network.
     HF_HOME="$PREFIX/hf" TORCH_HOME="$PREFIX/torch" \
@@ -43,7 +54,7 @@ arc() {
     if [[ -n "${1:-}" ]]; then
         read -r build commit date file sum < "$1"
     else
-        read -r build commit date file sum < <(curl -fsSL "$BASE/latest-linux-x86_64.txt")
+        read -r build commit date file sum < <(curl -fsSL "$BASE/latest-$ASSET.txt")
     fi
     curl -fsSL -o /tmp/arc.tar.gz "$BASE/$file"
     echo "$sum  /tmp/arc.tar.gz" | sha256sum -c - >/dev/null

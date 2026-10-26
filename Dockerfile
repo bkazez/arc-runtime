@@ -1,10 +1,12 @@
 # Everything arc needs on Linux except arc: ffmpeg, lame, and the separator's
 # python with torch (CPU), demucs and the htdemucs weights. Rebuilt only when
 # this file or install.sh changes. arc itself is ~10 MB and goes on top, in
-# whatever image uses this one:
+# whatever image uses this one, for linux/amd64 or linux/arm64:
 #
+#   # syntax=docker/dockerfile:1
 #   FROM ghcr.io/bkazez/arc-runtime:latest
-#   ADD https://www.impulsearc.com/arc-cli/latest-linux-x86_64.txt /opt/arc/build.txt
+#   ARG TARGETARCH
+#   ADD https://www.impulsearc.com/arc-cli/latest-linux-${TARGETARCH/amd64/x86_64}.txt /opt/arc/build.txt
 #   RUN /usr/local/share/arc-runtime/install.sh arc /opt/arc/build.txt
 FROM debian:trixie-slim
 COPY install.sh /usr/local/share/arc-runtime/install.sh
